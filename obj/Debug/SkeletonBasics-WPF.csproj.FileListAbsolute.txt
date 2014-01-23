@@ -17,3 +17,13 @@ C:\Users\Kaizhi\Documents\SkeletonBasics-WPF\bin\Debug\HelixToolkit.Wpf.pdb
 C:\Users\Kaizhi\Documents\SkeletonBasics-WPF\bin\Debug\HelixToolkit.Wpf.xml
 C:\Users\Kaizhi\Documents\SkeletonBasics-WPF\bin\Debug\HelixToolkit.Wpf.Input.pdb
 C:\Users\Kaizhi\Documents\SkeletonBasics-WPF\bin\Debug\HelixToolkit.Wpf.Input.xml
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF.exe
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF.pdb
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF.csprojResolveAssemblyReference.cache
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\MainWindow.baml
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\MainWindow.g.cs
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\App.g.cs
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF_MarkupCompile.cache
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF.g.resources
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\Microsoft.Samples.Kinect.SkeletonBasics.Properties.Resources.resources
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\SkeletonBasics-WPF.csproj.GenerateResource.Cache
