@@ -12,6 +12,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
     using Microsoft.Kinect;
     using System.Windows.Media.Media3D;
     using HelixToolkit.Wpf;
+    using System;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -174,10 +175,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 }
             }
 
-            if (null == this.sensor)
-            {
-                this.statusBarText.Text = Properties.Resources.NoKinectReady;
-            }
+            this.MainViewPort.Camera.Position = new Point3D(-20, 0, 15);
+            this.MainViewPort.Camera.LookDirection = new Vector3D(10, 0, -5);
+            this.MainViewPort.Camera.UpDirection = new Vector3D(1, 0, 0);
         }
 
         /// <summary>
@@ -221,40 +221,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     }
                 }
             }
-
-            /*
-            using (DrawingContext dc = this.drawingGroup.Open())
-            {
-                // Draw a transparent background to set the render size
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-
-                if (skeletons.Length != 0)
-                {
-                    foreach (Skeleton skel in skeletons)
-                    {
-                        RenderClippedEdges(skel, dc);
-
-                        if (skel.TrackingState == SkeletonTrackingState.Tracked)
-                        {
-                            this.DrawBonesAndJoints(skel, dc);
-                        }
-                        else if (skel.TrackingState == SkeletonTrackingState.PositionOnly)
-                        {
-                            dc.DrawEllipse(
-                            this.centerPointBrush,
-                            null,
-                            this.SkeletonPointToScreen(skel.Position),
-                            BodyCenterThickness,
-                            BodyCenterThickness);
-                        }
-                    }
-                }
-
-                // prevent drawing outside of our render area
-                this.drawingGroup.ClipGeometry = new RectangleGeometry(new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-            }
-
-            */
         }
 
         private Point3D getOriginalCenter(Skeleton skeleton)
@@ -278,7 +244,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 return;
             }
 
-            this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 2, viewport);
+            this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 0.2, viewport);
         }
 
         /// <summary>
@@ -329,8 +295,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             // Render joints
             foreach (Joint joint in skeleton.Joints)
             {
-                this.DrawJoint3D(joint, viewport);
+                //this.DrawJoint3D(joint, viewport);
             }
+
+            this.DrawJoint3D(skeleton.Joints[JointType.Head], viewport);
         }
 
         /// <summary>
@@ -398,9 +366,52 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             SphereVisual3D sphere = new SphereVisual3D();
             sphere.Center = center;
             sphere.Radius = radius;
-            sphere.Fill = Brushes.DarkOliveGreen;
+            sphere.Fill = Brushes.Black;
 
             viewport.Children.Add(sphere);
+        }
+
+        private double CalAngle(Point3D left, Point3D center, Point3D right)
+        {
+            double sideL = left.DistanceTo(center);
+            double sideR = right.DistanceTo(center);
+            double sideC = left.DistanceTo(right);
+
+            return Math.Acos((sideL * sideL + sideR * sideR - sideC * sideC) / (2 * sideL * sideR));
+        }
+
+        private double CalJointDist(Skeleton skeleton, JointType jointTypeLeft, JointType jointTypeRight)
+        {
+            Joint jointLeft = skeleton.Joints[jointTypeLeft];
+            Joint jointRight = skeleton.Joints[jointTypeRight];
+
+            // if we can't find either of these joints, return negative infinity
+            if (jointLeft.TrackingState == JointTrackingState.NotTracked ||
+               jointRight.TrackingState == JointTrackingState.NotTracked)
+            {
+                return double.NegativeInfinity;
+            }
+
+            return this.SkeletonPointTo3D(jointLeft.Position).DistanceTo(this.SkeletonPointTo3D(jointRight.Position));
+        }
+
+        private double CalJointAngle(Skeleton skeleton, JointType jointTypeLeft, JointType jointTypeCenter, JointType jointTypeRight)
+        {
+            Joint jointLeft = skeleton.Joints[jointTypeLeft];
+            Joint jointCenter = skeleton.Joints[jointTypeCenter];
+            Joint jointRight = skeleton.Joints[jointTypeRight];
+            
+            // If we can't find either of these joints, return negative infinity
+            if (jointLeft.TrackingState == JointTrackingState.NotTracked ||
+                jointCenter.TrackingState == JointTrackingState.NotTracked ||
+                jointRight.TrackingState == JointTrackingState.NotTracked)
+            {
+                return double.NegativeInfinity;
+            }
+
+            return CalAngle(this.SkeletonPointTo3D(jointLeft.Position), 
+                            this.SkeletonPointTo3D(jointCenter.Position),
+                            this.SkeletonPointTo3D(jointRight.Position));
         }
 
         /// <summary>
@@ -437,26 +448,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
 
             drawingContext.DrawLine(drawPen, this.SkeletonPointToScreen(joint0.Position), this.SkeletonPointToScreen(joint1.Position));
-        }
-
-        /// <summary>
-        /// Handles the checking or unchecking of the seated mode combo box
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
-        private void CheckBoxSeatedModeChanged(object sender, RoutedEventArgs e)
-        {
-            if (null != this.sensor)
-            {
-                if (this.checkBoxSeatedMode.IsChecked.GetValueOrDefault())
-                {
-                    this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Seated;
-                }
-                else
-                {
-                    this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Default;
-                }
-            }
         }
     }
 }
