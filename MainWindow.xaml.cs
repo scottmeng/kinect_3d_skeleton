@@ -6,13 +6,13 @@
 
 namespace Microsoft.Samples.Kinect.SkeletonBasics
 {
+    using System;
     using System.IO;
     using System.Windows;
     using System.Windows.Media;
     using Microsoft.Kinect;
     using System.Windows.Media.Media3D;
     using HelixToolkit.Wpf;
-    using System;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -71,7 +71,13 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private bool isAligned = false;
 
+        private string logFileName;
+
         private Point3D originalCenter;
+
+        private TextWriter logWriter;
+
+        private int touchDownCount;
 
         /// <summary>
         /// Active Kinect sensor
@@ -94,6 +100,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         public MainWindow()
         {
             InitializeComponent();
+
+            DataLogWindow.DataContext = touchDownCount; 
         }
 
         /// <summary>
@@ -178,6 +186,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             this.MainViewPort.Camera.Position = new Point3D(-20, 0, 15);
             this.MainViewPort.Camera.LookDirection = new Vector3D(10, 0, -5);
             this.MainViewPort.Camera.UpDirection = new Vector3D(1, 0, 0);
+
+            touchDownCount = 0;
         }
 
         /// <summary>
@@ -218,6 +228,11 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     if (skel.TrackingState == SkeletonTrackingState.Tracked)
                     {
                         this.DrawBonesAndJoints(skel, this.MainViewPort);
+
+                        if (this.CheckTouchDown(skel))
+                        {
+                            touchDownCount += 1;
+                        }
                     }
                 }
             }
@@ -377,7 +392,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             double sideR = right.DistanceTo(center);
             double sideC = left.DistanceTo(right);
 
-            return Math.Acos((sideL * sideL + sideR * sideR - sideC * sideC) / (2 * sideL * sideR));
+            return Math.Acos((sideL * sideL + sideR * sideR - sideC * sideC) / (2 * sideL * sideR)) * 180 / Math.PI;
         }
 
         private double CalJointDist(Skeleton skeleton, JointType jointTypeLeft, JointType jointTypeRight)
@@ -412,6 +427,106 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return CalAngle(this.SkeletonPointTo3D(jointLeft.Position), 
                             this.SkeletonPointTo3D(jointCenter.Position),
                             this.SkeletonPointTo3D(jointRight.Position));
+        }
+
+        private bool CheckBallTouch(Point3D ballCenter, double radius, Skeleton skeleton, JointType jointType)
+        {
+            Joint joint = skeleton.Joints[jointType];
+
+            if (joint.TrackingState == JointTrackingState.NotTracked)
+            {
+                return false;
+            }
+
+            return ballCenter.DistanceTo(this.SkeletonPointTo3D(joint.Position)) < radius;
+        }
+
+        private void RecordData(DateTime timeStamp, string logData)
+        {
+            logWriter.WriteLine(timeStamp.ToShortTimeString() + logData);
+        }
+
+        private void InitLogFile()
+        {
+            logFileName = DateTime.Now.ToString();
+            logFileName = "c:\\" + logFileName + ".log";
+
+            logWriter = new StreamWriter(logFileName);
+            // TODO: write header
+            logWriter.WriteLine("");
+        }
+
+        /*
+         * data formart:
+         *  time stamp,
+         *  distance between left hand and left foot,
+         *  distance between right hand and right foot,
+         *  angle of left thigh
+         *  angle of right thigh
+         *  head height
+         */
+        private void DisplayAndLogData(Skeleton skeleton)
+        {
+
+        }
+
+        private bool CheckTouchDown(Skeleton skeleton)
+        {
+            Joint leftHand = skeleton.Joints[JointType.HandLeft];
+            Joint rightHand = skeleton.Joints[JointType.HandRight];
+            Joint leftFoot = skeleton.Joints[JointType.FootLeft];
+            Joint rightFoot = skeleton.Joints[JointType.FootRight];
+
+            if (leftHand.TrackingState == JointTrackingState.NotTracked ||
+               rightHand.TrackingState == JointTrackingState.NotTracked ||
+               leftFoot.TrackingState == JointTrackingState.NotTracked ||
+               rightFoot.TrackingState == JointTrackingState.NotTracked)
+            {
+                return false;
+            }
+
+            return this.IsBoneVertical(skeleton, JointType.HipLeft, JointType.KneeLeft, 20) &&
+                   this.IsBoneVertical(skeleton, JointType.HipRight, JointType.KneeRight, 20) &&
+                   (this.CalJointDist(skeleton, JointType.HandLeft, JointType.FootLeft) < 1) &&
+                   (this.CalJointDist(skeleton, JointType.HandRight, JointType.FootRight) < 1);
+        }
+
+        private bool IsBoneVertical(Skeleton skeleton, JointType jointTypeTop, JointType jointTypeBottom, double tolerance)
+        {
+            Joint jointTop = skeleton.Joints[jointTypeTop];
+            Joint jointBottom = skeleton.Joints[jointTypeBottom];
+
+            if(jointTop.TrackingState == JointTrackingState.NotTracked ||
+               jointBottom.TrackingState == JointTrackingState.NotTracked)
+            {
+                return false;
+            }
+
+            Point3D bottom = this.SkeletonPointTo3D(jointBottom.Position);
+            Point3D top = this.SkeletonPointTo3D(jointTop.Position);
+            Point3D refBottom = top;
+            refBottom.Offset(0, 0, -1);
+
+            return tolerance > this.CalAngle(bottom, top, refBottom);
+        }
+
+        private bool IsBoneHorizontal(Skeleton skeleton, JointType jointTypeLeft, JointType jointTypeRight, double tolerance)
+        {
+            Joint jointLeft = skeleton.Joints[jointTypeLeft];
+            Joint jointRight = skeleton.Joints[jointTypeRight];
+
+            if (jointLeft.TrackingState == JointTrackingState.NotTracked ||
+               jointRight.TrackingState == JointTrackingState.NotTracked)
+            {
+                return false;
+            }
+
+            Point3D left = this.SkeletonPointTo3D(jointLeft.Position);
+            Point3D right = this.SkeletonPointTo3D(jointRight.Position);
+            Point3D refLeft = left;
+            refLeft.Offset(0, 0, -1);
+
+            return tolerance > this.CalAngle(left, right, refLeft);
         }
 
         /// <summary>
