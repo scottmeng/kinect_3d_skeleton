@@ -1,0 +1,10 @@
+﻿<Window x:Class="Microsoft.Samples.Kinect.SkeletonBasics.HomePage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="HomePage" Height="300" Width="300">
+    <Grid>
+        <TextBlock Height="157" HorizontalAlignment="Left" Margin="12,12,0,0" Name="textBlock1" Text="Do you like to perform touch-down or play a game?" VerticalAlignment="Top" Width="254" FontSize="24" TextWrapping="Wrap"/>
+        <Button Content="Touch down" Height="60" HorizontalAlignment="Left" Margin="12,146,0,0" Name="btnTouchDown" VerticalAlignment="Top" Width="119" FontSize="16" Click="btnTouchDown_Click" />
+        <Button Content="Game please" Height="60" HorizontalAlignment="Left" Margin="147,146,0,0" Name="btnGame" VerticalAlignment="Top" Width="119" FontSize="16" Click="btnGame_Click" />
+    </Grid>
+</Window>

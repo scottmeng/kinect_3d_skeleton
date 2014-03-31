@@ -14,6 +14,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
     using System.Windows.Media.Media3D;
     using HelixToolkit.Wpf;
 
+    using Microsoft.Samples.Kinect.SkeletonBasics.Sources;
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -71,6 +73,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private bool isAligned = false;
 
+        private bool hasBall = false;
+
         private string logFileName;
 
         private Point3D originalCenter;
@@ -78,6 +82,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         private TextWriter logWriter;
 
         private int touchDownCount;
+
+        private Ball ball;
 
         /// <summary>
         /// Active Kinect sensor
@@ -100,8 +106,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         public MainWindow()
         {
             InitializeComponent();
-
-            DataLogWindow.DataContext = touchDownCount; 
+            var selection = MessageBox.Show("Do you want to perform touch-down or play a game?", "Choose a mode", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            this.DataLogWindow.DataContext = touchDownCount;
         }
 
         /// <summary>
@@ -229,13 +235,25 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     {
                         this.DrawBonesAndJoints(skel, this.MainViewPort);
 
+                        this.DrawSphere3D(this.Point3DChangeView(new Point3D(3, 6, 3)), 0.5, Brushes.Red, this.MainViewPort);
+
                         if (this.CheckTouchDown(skel))
                         {
                             touchDownCount += 1;
+
                         }
                     }
                 }
             }
+        }
+
+        private void generateBall()
+        {
+            Random random = new Random();
+            double x_offset = random.NextDouble();
+            double z_offset = random.NextDouble();
+
+            this.DrawSphere3D(
         }
 
         private Point3D getOriginalCenter(Skeleton skeleton)
@@ -259,7 +277,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 return;
             }
 
-            this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 0.2, viewport);
+            this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 0.2, Brushes.Black, viewport);
         }
 
         /// <summary>
@@ -339,6 +357,16 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return new Point3D(x, y, z);
         }
 
+        private Point3D Point3DChangeView(Point3D point)
+        {
+            double y = (point.X + originalCenter.X);
+            double z = (point.Y + originalCenter.Y);
+            double x = (point.Z + originalCenter.Z);
+
+            // Convert point to 3D spac
+            return new Point3D(x, y, z);
+        }
+
         private void DrawBone3D(Skeleton skeleton, HelixToolkit.Wpf.HelixViewport3D viewport, JointType jointType0, JointType jointType1)
         {
             Joint joint0 = skeleton.Joints[jointType0];
@@ -364,7 +392,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         private void DrawLine3D(Point3D p0, Point3D p1, HelixToolkit.Wpf.HelixViewport3D viewport)
         {
             double tubeDiameter = 0.1;
-            
+
             TubeVisual3D tube = new TubeVisual3D();
             tube.Path = new Point3DCollection();
             tube.Path.Add(p0);
@@ -376,12 +404,12 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             viewport.Children.Add(tube);
         }
 
-        private void DrawSphere3D(Point3D center, double radius, HelixToolkit.Wpf.HelixViewport3D viewport)
+        private void DrawSphere3D(Point3D center, double radius, Brush brush, HelixToolkit.Wpf.HelixViewport3D viewport)
         {
             SphereVisual3D sphere = new SphereVisual3D();
             sphere.Center = center;
             sphere.Radius = radius;
-            sphere.Fill = Brushes.Black;
+            sphere.Fill = brush;
 
             viewport.Children.Add(sphere);
         }
@@ -415,7 +443,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             Joint jointLeft = skeleton.Joints[jointTypeLeft];
             Joint jointCenter = skeleton.Joints[jointTypeCenter];
             Joint jointRight = skeleton.Joints[jointTypeRight];
-            
+
             // If we can't find either of these joints, return negative infinity
             if (jointLeft.TrackingState == JointTrackingState.NotTracked ||
                 jointCenter.TrackingState == JointTrackingState.NotTracked ||
@@ -424,7 +452,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 return double.NegativeInfinity;
             }
 
-            return CalAngle(this.SkeletonPointTo3D(jointLeft.Position), 
+            return CalAngle(this.SkeletonPointTo3D(jointLeft.Position),
                             this.SkeletonPointTo3D(jointCenter.Position),
                             this.SkeletonPointTo3D(jointRight.Position));
         }
@@ -496,7 +524,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             Joint jointTop = skeleton.Joints[jointTypeTop];
             Joint jointBottom = skeleton.Joints[jointTypeBottom];
 
-            if(jointTop.TrackingState == JointTrackingState.NotTracked ||
+            if (jointTop.TrackingState == JointTrackingState.NotTracked ||
                jointBottom.TrackingState == JointTrackingState.NotTracked)
             {
                 return false;

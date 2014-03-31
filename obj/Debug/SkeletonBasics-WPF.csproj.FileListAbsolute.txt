@@ -34,3 +34,5 @@ C:\Users\Kaizhi\kinect_3d_skeleton\bin\Debug\HelixToolkit.Wpf.pdb
 C:\Users\Kaizhi\kinect_3d_skeleton\bin\Debug\HelixToolkit.Wpf.xml
 C:\Users\Kaizhi\kinect_3d_skeleton\bin\Debug\HelixToolkit.Wpf.Input.pdb
 C:\Users\Kaizhi\kinect_3d_skeleton\bin\Debug\HelixToolkit.Wpf.Input.xml
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\HomePage.baml
+C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\HomePage.g.cs
