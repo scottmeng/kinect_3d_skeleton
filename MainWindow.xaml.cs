@@ -81,7 +81,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private TextWriter logWriter;
 
-        private int touchDownCount;
+        public int touchDownCount { get; set; }
+        private bool hasTouched;
+
+        private double ballHeight;
 
         private Ball ball;
 
@@ -107,7 +110,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         {
             InitializeComponent();
             var selection = MessageBox.Show("Do you want to perform touch-down or play a game?", "Choose a mode", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            this.DataLogWindow.DataContext = touchDownCount;
+            this.DataLogWindow.DataContext = this.touchDownCount;
+            this.ball = new Ball(6, 0.5);
         }
 
         /// <summary>
@@ -193,7 +197,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             this.MainViewPort.Camera.LookDirection = new Vector3D(10, 0, -5);
             this.MainViewPort.Camera.UpDirection = new Vector3D(1, 0, 0);
 
-            touchDownCount = 0;
+            this.touchDownCount = 0;
+            this.hasTouched = false;
+
         }
 
         /// <summary>
@@ -235,25 +241,55 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     {
                         this.DrawBonesAndJoints(skel, this.MainViewPort);
 
-                        this.DrawSphere3D(this.Point3DChangeView(new Point3D(3, 6, 3)), 0.5, Brushes.Red, this.MainViewPort);
+                        //this.DrawSphere3D(this.Point3DChangeView(this.ball.getBallCenter()), 0.5, Brushes.Red, this.MainViewPort);
 
-                        if (this.CheckTouchDown(skel))
+                        if (!this.hasTouched && this.CheckTouchDown(skel))
                         {
-                            touchDownCount += 1;
+                            this.touchDownCount += 1;
+                            this.hasTouched = true;
+                            this.DataLogWindow.Text = "Number of touch-down performed: " + this.touchDownCount.ToString();
+                        }
 
+                        if (this.hasTouched && this.CheckRestorePosition(skel))
+                        {
+                            this.hasTouched = false;
                         }
                     }
                 }
             }
         }
 
+        private bool CheckRestorePosition(Skeleton skeleton)
+        {
+            Joint leftHand = skeleton.Joints[JointType.HandLeft];
+            Joint rightHand = skeleton.Joints[JointType.HandRight];
+            Joint leftFoot = skeleton.Joints[JointType.FootLeft];
+            Joint rightFoot = skeleton.Joints[JointType.FootRight];
+
+            if (leftHand.TrackingState == JointTrackingState.NotTracked ||
+               rightHand.TrackingState == JointTrackingState.NotTracked ||
+               leftFoot.TrackingState == JointTrackingState.NotTracked ||
+               rightFoot.TrackingState == JointTrackingState.NotTracked)
+            {
+                return false;
+            }
+
+            return this.IsBoneVertical(skeleton, JointType.HipLeft, JointType.KneeLeft, 20) &&
+                   this.IsBoneVertical(skeleton, JointType.HipRight, JointType.KneeRight, 20) &&
+                   (this.CalJointDist(skeleton, JointType.HandLeft, JointType.FootLeft) > 2) &&
+                   (this.CalJointDist(skeleton, JointType.HandRight, JointType.FootRight) > 2);
+        }
+
+        // generate ball with randomized x and z position
+        // but at a fixed height
         private void generateBall()
         {
             Random random = new Random();
             double x_offset = random.NextDouble();
             double z_offset = random.NextDouble();
 
-            this.DrawSphere3D(
+            Point3D center = new Point3D(x_offset + this.originalCenter.X, this.ballHeight, z_offset + this.originalCenter.Z);
+            this.DrawSphere3D(this.Point3DChangeView(center), 0.5, Brushes.Red, this.MainViewPort);
         }
 
         private Point3D getOriginalCenter(Skeleton skeleton)
@@ -513,10 +549,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 return false;
             }
 
-            return this.IsBoneVertical(skeleton, JointType.HipLeft, JointType.KneeLeft, 20) &&
-                   this.IsBoneVertical(skeleton, JointType.HipRight, JointType.KneeRight, 20) &&
-                   (this.CalJointDist(skeleton, JointType.HandLeft, JointType.FootLeft) < 1) &&
-                   (this.CalJointDist(skeleton, JointType.HandRight, JointType.FootRight) < 1);
+            return this.IsBoneVertical(skeleton, JointType.HipLeft, JointType.KneeLeft, 30) &&
+                   this.IsBoneVertical(skeleton, JointType.HipRight, JointType.KneeRight, 30) &&
+                   (this.CalJointDist(skeleton, JointType.HandLeft, JointType.FootLeft) < 2) &&
+                   (this.CalJointDist(skeleton, JointType.HandRight, JointType.FootRight) < 2);
         }
 
         private bool IsBoneVertical(Skeleton skeleton, JointType jointTypeTop, JointType jointTypeBottom, double tolerance)
