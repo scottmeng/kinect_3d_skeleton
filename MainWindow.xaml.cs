@@ -73,8 +73,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private bool isAligned = false;
 
-        private bool hasBall = false;
-
         private string logFileName;
 
         private Point3D originalCenter;
@@ -84,9 +82,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         public int touchDownCount { get; set; }
         private bool hasTouched;
 
-        private double ballHeight;
-
         private Ball ball;
+        public int scores { get; set; }
+        private DateTime lastTouch;
+        private DateTime lastCombo;
 
         /// <summary>
         /// Active Kinect sensor
@@ -109,9 +108,12 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         public MainWindow()
         {
             InitializeComponent();
-            var selection = MessageBox.Show("Do you want to perform touch-down or play a game?", "Choose a mode", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            // var selection = MessageBox.Show("Do you want to perform touch-down or play a game?", "Choose a mode", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             this.DataLogWindow.DataContext = this.touchDownCount;
-            this.ball = new Ball(6, 0.5);
+            this.ball = new Ball(6, 1);
+            this.scores = 0;
+            this.lastTouch = DateTime.MinValue;
+            this.lastCombo = DateTime.MinValue;
         }
 
         /// <summary>
@@ -239,20 +241,48 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 {
                     if (skel.TrackingState == SkeletonTrackingState.Tracked)
                     {
+                        DateTime curTime = DateTime.Now;
+
                         this.DrawBonesAndJoints(skel, this.MainViewPort);
 
-                        //this.DrawSphere3D(this.Point3DChangeView(this.ball.getBallCenter()), 0.5, Brushes.Red, this.MainViewPort);
-
-                        if (!this.hasTouched && this.CheckTouchDown(skel))
-                        {
-                            this.touchDownCount += 1;
-                            this.hasTouched = true;
-                            this.DataLogWindow.Text = "Number of touch-down performed: " + this.touchDownCount.ToString();
-                        }
-
-                        if (this.hasTouched && this.CheckRestorePosition(skel))
+                        if (this.lastTouch.AddSeconds(0.4).CompareTo(curTime) < 0 && this.hasTouched)
                         {
                             this.hasTouched = false;
+                            this.ball.flyUp();
+                        }
+
+                        // if the ball is not touched
+                        if (!this.hasTouched)
+                        {
+                            this.DrawSphere3D(this.Point3DChangeView(this.ball.Center), 0.5, Brushes.Red, this.MainViewPort);
+                        }
+                        else
+                        {
+                            this.DrawSphere3D(this.Point3DChangeView(this.ball.Center), 0.5, Brushes.Green, this.MainViewPort);
+                        }
+
+                        if (this.lastCombo.AddSeconds(1.5).CompareTo(curTime) < 0 &&
+                                this.txtBlkCombo.Visibility == Visibility.Visible)
+                        {
+                            this.txtBlkCombo.Visibility = Visibility.Hidden;
+                        }
+
+                        if (this.CheckBallTouch(skel) && !this.hasTouched)
+                        {
+                            this.hasTouched = true;
+                            
+                            this.scores += 1;
+
+                            // if it is within one second
+                            if (this.lastTouch.AddSeconds(1.5).CompareTo(curTime) > 0)
+                            {
+                                this.txtBlkCombo.Visibility = Visibility.Visible;
+                                this.scores += 1;
+                                this.lastCombo = curTime;
+                            }
+
+                            this.lastTouch = curTime;
+                            this.DataLogWindow.Text = "Scores: " + this.scores.ToString();
                         }
                     }
                 }
@@ -280,18 +310,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                    (this.CalJointDist(skeleton, JointType.HandRight, JointType.FootRight) > 2);
         }
 
-        // generate ball with randomized x and z position
-        // but at a fixed height
-        private void generateBall()
-        {
-            Random random = new Random();
-            double x_offset = random.NextDouble();
-            double z_offset = random.NextDouble();
-
-            Point3D center = new Point3D(x_offset + this.originalCenter.X, this.ballHeight, z_offset + this.originalCenter.Z);
-            this.DrawSphere3D(this.Point3DChangeView(center), 0.5, Brushes.Red, this.MainViewPort);
-        }
-
         private Point3D getOriginalCenter(Skeleton skeleton)
         {
             SkeletonPoint leftFootPos = skeleton.Joints[JointType.FootLeft].Position;
@@ -314,6 +332,17 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
 
             this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 0.2, Brushes.Black, viewport);
+        }
+
+        private void DrawHand3D(Joint joint, HelixToolkit.Wpf.HelixViewport3D viewport)
+        {
+            // If we can't find either of these joints, exit
+            if (joint.TrackingState == JointTrackingState.NotTracked)
+            {
+                return;
+            }
+
+            this.DrawSphere3D(this.SkeletonPointTo3D(joint.Position), 0.15, Brushes.Crimson, viewport);
         }
 
         /// <summary>
@@ -366,6 +395,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             {
                 //this.DrawJoint3D(joint, viewport);
             }
+
+            this.DrawHand3D(skeleton.Joints[JointType.HandRight], viewport);
+            this.DrawHand3D(skeleton.Joints[JointType.HandLeft], viewport);
 
             this.DrawJoint3D(skeleton.Joints[JointType.Head], viewport);
         }
@@ -493,16 +525,39 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                             this.SkeletonPointTo3D(jointRight.Position));
         }
 
-        private bool CheckBallTouch(Point3D ballCenter, double radius, Skeleton skeleton, JointType jointType)
+        private double CalBallDist(Point3D ballCenter, Point3D hand)
         {
-            Joint joint = skeleton.Joints[jointType];
+            return Math.Sqrt(Math.Pow(ballCenter.Y - hand.Z, 2)
+                           + Math.Pow(ballCenter.X - hand.Y, 2)
+                           + Math.Pow(ballCenter.Z - hand.X, 2));
+        }
 
-            if (joint.TrackingState == JointTrackingState.NotTracked)
+        private bool CheckBallTouch(Skeleton skeleton)
+        {
+            double radius = this.ball.Radius;
+            Point3D center = this.ball.Center;
+
+            Joint leftHand = skeleton.Joints[JointType.HandLeft];
+            Joint rightHand = skeleton.Joints[JointType.HandRight];
+
+            if (leftHand.TrackingState == JointTrackingState.NotTracked &&
+                rightHand.TrackingState == JointTrackingState.NotTracked)
             {
                 return false;
             }
 
-            return ballCenter.DistanceTo(this.SkeletonPointTo3D(joint.Position)) < radius;
+            Point3D leftHandPoint = this.SkeletonPointTo3D(leftHand.Position);
+            Point3D rightHandPoint = this.SkeletonPointTo3D(rightHand.Position);
+
+            double leftHandDist = center.DistanceTo(this.SkeletonPointTo3D(leftHand.Position));
+            double rightHandDist = center.DistanceTo(this.SkeletonPointTo3D(rightHand.Position));
+
+            double left = this.CalBallDist(center, this.SkeletonPointTo3D(leftHand.Position));
+            double right = this.CalBallDist(center, this.SkeletonPointTo3D(rightHand.Position));
+
+            //this.DataLogWindow.Text = right.ToString();
+
+            return left < (radius + 0.3) || right < (radius + 0.3);
         }
 
         private void RecordData(DateTime timeStamp, string logData)

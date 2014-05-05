@@ -4,16 +4,16 @@
 winexe
 C#
 .cs
-C:\Users\Kaizhi\kinect_3d_skeleton\obj\Debug\
+C:\Users\Kaizhi\kinect_3d_game\obj\Debug\
 Microsoft.Samples.Kinect.SkeletonBasics
 none
 false
 DEBUG;TRACE
-C:\Users\Kaizhi\kinect_3d_skeleton\App.xaml
+C:\Users\Kaizhi\kinect_3d_game\App.xaml
 2457512542
 
 71293963864
-15-712326576
+15372916312
 HomePage.xaml;MainWindow.xaml;
 
 False
